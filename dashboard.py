@@ -3,6 +3,7 @@ from PIL import Image
 import pandas as pd
 import mysql.connector
 import time
+import plotly.graph_objects as go
 
 
 def obtener_datos():
@@ -10,35 +11,73 @@ def obtener_datos():
         host="localhost",
         user="root",
         password="",
-        database="iot_db"
+        database="reto_db"
     )
     df = pd.read_sql(
-        "SELECT * FROM temperaturas ORDER BY fecha DESC LIMIT 50",
-        conn
+        "SELECT temperatura, corriente, vibracion, fecha FROM mediciones ORDER BY fecha DESC LIMIT 50", conn
     )
     conn.close()
+    df['fecha'] = pd.to_datetime(df['fecha'])
     return df
 
+def mostrar_gauge(temp, min_val=0, max_val=100):
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=temp,
+        title={'text': "Temperatura (°C)"},
+        gauge={
+            'axis': {'range': [min_val, max_val]},
+            'bar': {'color': "#3B8FF3"},
+            'steps': [
+                {'range': [min_val, (min_val+max_val)/2], 'color': "#34B1AA"},
+                {'range': [(min_val+max_val)/2, max_val], 'color': "#E0B50F"},
+                {'range': [min_val + (max_val - min_val)*0.6, max_val], 'color': "#F29F67"},
+            ],
+            'threshold': {
+                'line': {'color': "#FF3333", 'width': 15},
+                'thickness': 0.85,
+                'value': max_val  
+            }
+        }
+    ))
+
+    st.plotly_chart(fig, use_container_width=True)
 
 def main():
     
 
     st.set_page_config(layout="wide")
     img = Image.open("logo.png")
-    st.image(img, width=200)
+    st.image(img, width=100)
     st.title("SVS")
     st.subheader("Monitoreo de licuadora")
-
+    df = obtener_datos()
+    
     with st.container(border=True):
         st.write("This is inside the container")
-        cols = st.columns(3)
+        col1, col2, col3 = st.columns(3)
         titles = ["Temperatura", "Vibración", "Corriente"]
-        for col, title in zip(cols, titles):
-            with col:
-                # aquí cada columna tendrá su título distinto
-                st.title(title)
-                # … puedes añadir más widgets dentro de cada columna …
-                st.write("Aquí va el valor del sensor de", title.lower())
+        
+        with col1:
+            with st.container(border = True):
+                st.title(titles[0])
+                                            
+                if 'temperatura' in df.columns and not df.empty:
+                    promedio_temp = df['temperatura'].mean()
+                    mostrar_gauge(promedio_temp, min_val=0, max_val=100)
+                else:
+                    st.write("No hay datos de temperatura aún.")
+        with col2:
+            with st.container(border = True):
+                st.title(titles[1])
+
+        with col3:
+            with st.container(border = True):
+                st.title(titles[2])
+
+    # (Opcional) gráfica de la serie histórica
+    df = df.set_index('fecha')
+    st.line_chart(df['temperatura'])
 
     placeholder = st.empty()
     df = obtener_datos()
