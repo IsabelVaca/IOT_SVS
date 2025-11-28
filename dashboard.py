@@ -102,7 +102,7 @@ def main():
         
         with col1:
             with st.container(border = True):
-                st.title(titles[0])
+                st.markdown("<h3 style='text-align: center;'>Temperatura</h3>", unsafe_allow_html=True)
                                             
                 if 'temperatura' in df.columns and not df.empty:
                     promedio_temp = df['temperatura'].mean()
@@ -116,7 +116,7 @@ def main():
                         st.line_chart(df['temperatura'])
         with col2:
             with st.container(border = True):
-                st.title(titles[1])
+                st.markdown(f"<h3 style='text-align: center;'>{titles[1]}</h3>", unsafe_allow_html=True)
                 if 'vibracion' in df.columns and not df.empty:
                     promedio_vib = df['vibracion'].mean()
                     mostrar_gauge(promedio_vib, "vibracion",  min_val=0, max_val=100)
@@ -131,7 +131,7 @@ def main():
 
         with col3:
             with st.container(border = True):
-                st.title(titles[2])
+                st.markdown(f"<h3 style='text-align: center;'>{titles[2]}</h3>", unsafe_allow_html=True)
                 if 'corriente' in df.columns and not df.empty:
                     promedio_corr = df['corriente'].mean()
                     mostrar_gauge(promedio_corr, "corriente",  min_val=0, max_val=100)
