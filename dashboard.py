@@ -20,27 +20,45 @@ def obtener_datos():
     df['fecha'] = pd.to_datetime(df['fecha'])
     return df
 
-def mostrar_gauge_1(temp, min_val=0, max_val=100):
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=temp,
-        title={'text': "Temperatura (°C)"},
-        gauge={
-            'axis': {'range': [min_val, max_val]},
-            'bar': {'color': "#3B8FF3"},
-            'steps': [
-                {'range': [min_val, (min_val+max_val)/2], 'color': "#34B1AA"},
-                {'range': [(min_val+max_val)/2, max_val], 'color': "#E0B50F"},
-                {'range': [min_val + (max_val - min_val)*0.6, max_val], 'color': "#F29F67"},
-            ],
-            'threshold': {
-                'line': {'color': "#FF3333", 'width': 15},
-                'thickness': 0.85,
-                'value': max_val  
-            }
-        }
-    ))
+#Calculos de estado de cada variable
+def calc_temp_state(temperatura):
+    if temperatura > 100:
+        state = "critical"
+        return state
+    else:
+        state = "normal"
+        return state
+    
+def calc_corr_state(corriente):
+    if corriente > 100:
+        state = "critical"
+        return state
+    else:
+        state = "normal"
+        return state
+    
+def calc_vib_state(vibracion):
+    if vibracion > 100:
+        state = "critical"
+        return state
+    else:
+        state = "normal"
+        return state
 
+#Calculo del estado general
+def calc_general_state(temp_state, corr_state, vib_state):
+    if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
+        img_normal_state = Image.open("normal_state.png")
+        st.image(img_normal_state, caption="Estado Normal", use_column_width=True)
+    elif ((temp_state == "critical" and corr_state == "critical") or (temp_state == "critical" and vib_state == "critical")
+        or (corr_state == "critical" and vib_state == "critical")):
+        img_moderate_state = Image.open("moderate_state.png")
+        st.image(img_moderate_state, caption="Estado Moderado", use_column_width=True)
+    elif temp_state == "critical" or corr_state == "critical" or vib_state == "critical":
+        img_critical_state = Image.open("critical_state.png")
+        st.image(img_critical_state, caption="Estado Crítico", use_column_width=True)
+    
+#Grafica de gauge
 def mostrar_gauge(valor, tipo, min_val=0, max_val=100):
         # Título según la variable
     if tipo == 'temperatura':
@@ -76,6 +94,8 @@ def mostrar_gauge(valor, tipo, min_val=0, max_val=100):
           }
       ))
     st.plotly_chart(fig, use_container_width=True)
+
+
 
 def main():
     
@@ -143,7 +163,11 @@ def main():
                         df = df.set_index('fecha')
                         st.line_chart(df['corriente'])
 
-
+    temp_state = calc_temp_state(promedio_temp)
+    corr_state = calc_corr_state(promedio_corr)
+    vib_state = calc_vib_state(promedio_vib)
+    calc_general_state(temp_state, corr_state, vib_state)
+    
 
 
     placeholder = st.empty()
@@ -158,7 +182,7 @@ def main():
         st.line_chart(chart_df)
 
     # Espera 5 segundos y vuelve a ejecutar todo
-    time.sleep(5)
+    time.sleep(20)
     st.experimental_rerun()
 
     
