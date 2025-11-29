@@ -50,31 +50,71 @@ def calc_vib_state(vibracion):
     
 #Renderizado de SVG
 #implementado con IA 
-def render_svg(svg_str: str, width: int = None):
-        b64 = base64.b64encode(svg_str.encode("utf-8")).decode("utf-8")
-        img_html = f'<img src="data:image/svg+xml;base64,{b64}"'
-        if width:
-            img_html += f' width="{width}"'
-        img_html += '/>'
-        st.write(img_html, unsafe_allow_html=True)
+def render_svg(svg_str: str, width: int = None) -> None:
+    """Renderiza un SVG pasado como string usando base64"""
+    b64 = base64.b64encode(svg_str.encode("utf-8")).decode("utf-8")
+    img_html = f'<img src="data:image/svg+xml;base64,{b64}"'
+    if width is not None:
+        img_html += f' width="{width}"'
+    img_html += ' />'
+    st.markdown(img_html, unsafe_allow_html=True)
 
-#Calculo del estado general
 def calc_general_state(temp_state, corr_state, vib_state):
     if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
-        with open("1.svg", "r", encoding="utf-8") as f:
-            svg_content = f.read()
-        render_svg(svg_content, width=500)
-    elif ((temp_state == "critical" and corr_state == "critical") or (temp_state == "critical" and vib_state == "critical")
-        or (corr_state == "critical" and vib_state == "critical")):
-        with open("2.svg", "r", encoding="utf-8") as f:
-            svg_content = f.read()
-        render_svg(svg_content, width=500)
+        with st.container():
+            with open("1.svg", "r", encoding="utf-8") as f:
+                svg_content = f.read()
+            render_svg(svg_content, width=500)
+
+            # Texto desplazado a la derecha con HTML + margin-left
+            st.markdown(
+                """
+                <div style="margin-left: 170px; margin-top: -40px;">
+                    <span style="color: #16c378; font-size: 28px;">
+                        Estado: Óptimo
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+    elif ((temp_state == "critical" and corr_state == "critical") or
+          (temp_state == "critical" and vib_state == "critical") or
+          (corr_state == "critical" and vib_state == "critical")):
+        with st.container():
+            with open("2.svg", "r", encoding="utf-8") as f:
+                svg_content = f.read()
+            render_svg(svg_content, width=500)
+
+            st.markdown(
+                """
+                <div style="margin-left: 170px; margin-top: -40px;">
+                    <span style="color: #e5a100; font-size: 28px;">
+                        Estado: Atención
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
     elif temp_state == "critical" or corr_state == "critical" or vib_state == "critical":
-        with open("3.svg", "r", encoding="utf-8") as f:
-            svg_content = f.read()
-        render_svg(svg_content, width=500)
-        st.markdown(''' :#16c378[]  text.''')
-    
+        with st.container():
+            with open("3.svg", "r", encoding="utf-8") as f:
+                svg_content = f.read()
+            render_svg(svg_content, width=500)
+
+            st.markdown(
+                """
+                <div style="margin-left: 170px; margin-top: -40px;">
+                    <span style="color: #e63946; font-size: 28px;">
+                        Estado: Crítico
+                    </span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+
 #Grafica de gauge
 def mostrar_gauge(valor, tipo, min_val=0, max_val=100):
         # Título según la variable
@@ -192,18 +232,6 @@ def main():
 
     placeholder = st.empty()
     df = obtener_datos()
-
-    while True:
-        df = obtener_datos()
-        with placeholder.container():
-            st.subheader("Últimas mediciones")
-            st.dataframe(df)
-            st.line_chart(df[['valor']].set_index(df['fecha']))
-            time.sleep(5)
-        
-    # Espera 20 segundos y vuelve a ejecutar todo
-    
-
     
 
 if __name__ == '__main__':
