@@ -17,7 +17,7 @@ def obtener_datos():
         database="reto_db"
     )
     df = pd.read_sql(
-        "SELECT temperatura, corriente, vibracion, fecha FROM mediciones ORDER BY fecha DESC LIMIT 50", conn
+        "SELECT temperatura, corriente, vibracion, fecha FROM mediciones ORDER BY fecha DESC ", conn
     )
     conn.close()
     df['fecha'] = pd.to_datetime(df['fecha'])
