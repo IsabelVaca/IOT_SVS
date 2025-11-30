@@ -7,10 +7,12 @@ import plotly.graph_objects as go
 import base64
 from streamlit_autorefresh import st_autorefresh
 from streamlit_echarts import st_echarts
+from streamlit_extras.stylable_container import stylable_container
 
 
+#auto refresh cada 12 segundos
 st_autorefresh(interval=12 * 1000, key="data_refresh")
-
+#obtener datos desde MySQL
 def obtener_datos():
     conn = mysql.connector.connect(
         host="localhost",
@@ -24,12 +26,13 @@ def obtener_datos():
     conn.close()
     df['fecha'] = pd.to_datetime(df['fecha'])
     return df
-
+#mostrar tabla de datos
 def mostrar_tabla_mysql():
     st.subheader(" Datos desde MySQL")
     df = obtener_datos()
     st.dataframe(df, use_container_width=True)
 
+#Graficas de temperatura
 def grafica_area_temperatura(df):
     fechas = df["fecha"].dt.strftime("%H:%M:%S").tolist()
     valores = df["temperatura"].tolist()
@@ -43,6 +46,7 @@ def grafica_area_temperatura(df):
     }
     
     st_echarts(options=options, height="400px")
+
 
 def grafica_area_corr(df):
     fechas = df["fecha"].dt.strftime("%H:%M:%S").tolist()
@@ -74,7 +78,7 @@ def grafica_area_vib(df):
 
 #Calculos de estado de cada variable
 def calc_temp_state(temperatura):
-    if temperatura > 100:
+    if temperatura >= 70:
         state = "critical"
         return state
     else:
@@ -82,7 +86,7 @@ def calc_temp_state(temperatura):
         return state
     
 def calc_corr_state(corriente):
-    if corriente > 100:
+    if corriente >= 13:
         state = "critical"
         return state
     else:
@@ -90,7 +94,7 @@ def calc_corr_state(corriente):
         return state
     
 def calc_vib_state(vibracion):
-    if vibracion > 100:
+    if vibracion >= 3:
         state = "critical"
         return state
     else:
@@ -127,9 +131,10 @@ def calc_general_state(temp_state, corr_state, vib_state):
                 unsafe_allow_html=True
             )
 
-    elif ((temp_state == "critical" and corr_state == "critical") or
-          (temp_state == "critical" and vib_state == "critical") or
-          (corr_state == "critical" and vib_state == "critical")):
+    elif ((temp_state == "critical" and corr_state == "critical" and vib_state == "normal" ) 
+          or
+          (temp_state == "critical" and vib_state == "critical" and corr_state == "normal") or
+          (corr_state == "critical" and vib_state == "critical" and temp_state == "normal")):
         with st.container():
             with open("2.svg", "r", encoding="utf-8") as f:
                 svg_content = f.read()
@@ -164,41 +169,58 @@ def calc_general_state(temp_state, corr_state, vib_state):
             )
 
 
-#Grafica de gauge
-def mostrar_gauge(valor, tipo, min_val=0, max_val=100):
-        # Título según la variable
+def mostrar_gauge(valor, tipo):
+    # Definir rangos y límites según tipo
     if tipo == 'temperatura':
         title_text = "Temperatura (°C)"
-    elif tipo == 'vibracion':
-        title_text = "Vibración"
+        min_val, max_val = 0, 100
+        green_min, green_max = 40, 60
+        yellow_min, yellow_max = 50, 70
+        red_min = 70
+
     elif tipo == 'corriente':
         title_text = "Corriente (A)"
+        min_val, max_val = 0, 20
+        green_min, green_max = 0, 12
+        yellow_min, yellow_max = 12, 12.9 
+        red_min = 13
+
     else:
         title_text = str(tipo)
+        # valores genéricos
+        min_val, max_val = 0, 5
+        green_min, green_max = min_val, min_val + (max_val - min_val) * 0.5
+        yellow_min, yellow_max = None, None
+        red_min = green_max
 
-        # Puntos intermedios
-    mid1 = min_val + (max_val - min_val) * 0.5   # 50%
-    mid2 = min_val + (max_val - min_val) * 0.8   # 80%
+    # construir grafico
+    steps = []
+    steps.append({'range': [min_val, green_max], 'color': "#34B1AA"})
+    if yellow_min is not None and yellow_max is not None:
+        steps.append({'range': [green_max, yellow_max], 'color': "#E0B50F"})
+    steps.append({'range': [red_min, max_val], 'color': "#F29F67"})
 
     fig = go.Figure(go.Indicator(
-         mode="gauge+number",
+        mode="gauge+number",
         value=valor,
         title={'text': title_text},
-         gauge={
+        gauge={
             'axis': {'range': [min_val, max_val]},
-            'bar': {'color': "#D6E1FF"},  
-            'steps': [
-                {'range': [min_val, mid1], 'color': "#34B1AA"},  # verde
-                {'range': [mid1, mid2], 'color': "#E0B50F"},     # amarillo
-                {'range': [mid2, max_val], 'color': "#F29F67"},  # naranja
-               ],
+            'bar': {'color': "#D6E1FF"},
+            'steps': steps,
             'threshold': {
                 'line': {'color': "#FF3333", 'width': 4},
                 'thickness': 0.75,
-                'value': max_val
-             }
-          }
-      ))
+                'value': red_min
+            }
+        }
+    ))
+    # Estilo de fondo transparente
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)"
+    )
+
     st.plotly_chart(fig, use_container_width=True)
 
     
@@ -208,10 +230,22 @@ def main():
     
     #encabezado y configuración de página
     st.set_page_config(layout="wide")
-    img = Image.open("logo.png")
-    st.image(img, width=100)
-    st.title("SVS")
-    st.subheader("Monitoreo de licuadora")
+    with stylable_container(
+                key="header", 
+                 css_styles="""
+                 {
+                 background-color: #3C81EB;
+                 border-radius: 8px;
+                 padding: 20px;
+                }
+                 """
+            ):
+        co1,co2 = st.columns([3,0.2])
+        with co1:
+            st.title("SVS — Monitoreo de licuadora")
+        with co2:
+            img = Image.open("logo.png")
+            st.image(img, width=150)
 
     #obtener datos
     df = obtener_datos()
@@ -233,15 +267,25 @@ def main():
         titles = ["Temperatura", "Vibración", "Corriente"]
         
         with col1:
-            with st.container(border = True):
+            with stylable_container(
+                key="card_temp", 
+                 css_styles="""
+                 {
+                 background-color: #272B4A;
+                 border-radius: 8px;
+                 padding: 20px;
+                }
+                 """
+            ):
+            
                 st.markdown("<h3 style='text-align: center;'>Temperatura</h3>", unsafe_allow_html=True)
                                             
                 if 'temperatura' in df.columns and not df.empty:
                     promedio_temp = df['temperatura'].mean()
-                    mostrar_gauge(promedio_temp, "temperatura",  min_val=0, max_val=100)
+                    mostrar_gauge(promedio_temp, "temperatura")
                 else:
                     st.write("No hay datos de temperatura aún.")
-                if left.button("Ver gráfico histórico", key="btn_temp", width="stretch"):
+                if left.button("Ver gráfico histórico", key="btn_temp", width="stretch", type="primary"):
                     st.session_state.show_temp = not st.session_state.show_temp
                     if st.session_state.show_temp:
                         df_temp = df.copy()
@@ -250,72 +294,119 @@ def main():
                         df_sorted = df.sort_values('fecha')
                         grafica_area_temperatura(df_sorted)
         with col2:
-            with st.container(border = True):
+            with stylable_container(
+                key="card_vib", 
+                 css_styles="""
+                 {
+                 background-color: #272B4A;
+                 border-radius: 8px;
+                 padding: 20px;
+                }
+                 """
+            ):
                 st.markdown(f"<h3 style='text-align: center;'>{titles[1]}</h3>", unsafe_allow_html=True)
                 if 'vibracion' in df.columns and not df.empty:
                     promedio_vib = df['vibracion'].mean()
-                    mostrar_gauge(promedio_vib, "vibracion",  min_val=0, max_val=100)
+                    mostrar_gauge(promedio_vib, "vibracion")
                 else:
                     st.write("No hay datos de vibración aún.")
                 
-                if middle.button("Ver gráfico histórico",key="btn_vib", width="stretch"):
+                if middle.button("Ver gráfico histórico",key="btn_vib", width="stretch", type="primary"):
                      st.session_state.show_vib = not st.session_state.show_vib
                      if st.session_state.show_vib:
                         df = df.set_index('fecha')
                         st.line_chart(df['vibracion'])
 
         with col3:
-            with st.container(border = True):
+            with stylable_container(
+                key="card_corr", 
+                 css_styles="""
+                 {
+                 background-color: #272B4A;
+                 border-radius: 8px;
+                 padding: 20px;
+                }
+                 """
+            ):
                 st.markdown(f"<h3 style='text-align: center;'>{titles[2]}</h3>", unsafe_allow_html=True)
                 if 'corriente' in df.columns and not df.empty:
                     promedio_corr = df['corriente'].mean()
-                    mostrar_gauge(promedio_corr, "corriente",  min_val=0, max_val=100)
+                    mostrar_gauge(promedio_corr, "corriente")
                 else:
                     st.write("No hay datos de corriente aún.")
-                if right.button("Ver gráfico histórico", key="btn_corr", width="stretch"):
+                if right.button("Ver gráfico histórico", key="btn_corr", width="stretch", type="primary"):
                     st.session_state.show_corr = not st.session_state.show_corr
                     if st.session_state.show_corr:
                         df = df.set_index('fecha')
                         st.line_chart(df['corriente'])
 
     #Calculo de estados
-    temp_state = calc_temp_state(promedio_temp)
-    corr_state = calc_corr_state(promedio_corr)
-    vib_state = calc_vib_state(promedio_vib)
+    #temp_state = calc_temp_state(promedio_temp)
+    #corr_state = calc_corr_state(promedio_corr)
+    #vib_state = calc_vib_state(promedio_vib)
 
-    #Mostrar estado general
-    calc_general_state(temp_state, corr_state, vib_state)
-   
+    temp_state = calc_temp_state(73)
+    corr_state = calc_corr_state(14)
+    vib_state = calc_vib_state(1)
+
+    col_left, col_right = st.columns([1.5, 1.5])
+    with col_left:
+        with stylable_container(
+                key="sys_state", 
+                 css_styles="""
+                 {
+                 background-color: #272B4A;
+                 border-radius: 8px;
+                 padding: 20px;
+                }
+                 """
+            ):
+            #Mostrar estado general
+            calc_general_state(temp_state, corr_state, vib_state)
+        
+            colu_espacio = st.columns(1)
+
+            col1, col2, col3 = st.columns([1, 0.9, 1.1])
+
+
+            if col2.button("Ver detalle de diagnóstico",  type="primary"):
+                if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
+                    col2.markdown("Todos los sistemas operan dentro de los parámetros normales. No se requieren acciones adicionales.")
+
+                elif ((temp_state == "critical" and corr_state == "critical") or
+                (temp_state == "critical" and vib_state == "critical") or
+                (corr_state == "critical" and vib_state == "critical")):
+                    col2.markdown("Múltiples variables en estado crítico. Se recomienda una revisión  del sistema.")
+
+                    text = "Variables en estado crítico:\n"
+                    if temp_state == "critical":
+                        text += "\n- Temperatura"
+                    if corr_state == "critical":
+                        text += "\n- Corriente"
+                    if vib_state == "critical":
+                        text += "\n- Vibración"
+                    col2.text(text)
+
+                elif temp_state == "critical" and corr_state == "critical" and vib_state == "critical":
+                    col2.markdown("Todas las variables están en estado crítico. Acción inmediata requerida para evitar fallos graves.")
+
+    with col_right:
+        with stylable_container(
+                key="prediction", 
+                 css_styles="""
+                 {
+                 background-color: #272B4A;
+                 border-radius: 8px;
+                 padding: 20px;
+                }
+                 """
+            ):
+            st.markdown("### Historial de lecturas")
+            
     
-
-    col1, col2, col3 = st.columns([0.5, 0.9, 2.2])
-
-
-    if col2.button("Ver detalle de diagnóstico"):
-        if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
-            col2.markdown("Todos los sistemas operan dentro de los parámetros normales. No se requieren acciones adicionales.")
-
-        elif ((temp_state == "critical" and corr_state == "critical") or
-          (temp_state == "critical" and vib_state == "critical") or
-          (corr_state == "critical" and vib_state == "critical")):
-            col2.markdown("Múltiples variables en estado crítico. Se recomienda una revisión  del sistema.")
-
-            text = "Variables en estado crítico:\n"
-            if temp_state == "critical":
-                text += "\n- Temperatura"
-            if corr_state == "critical":
-                text += "\n- Corriente"
-            if vib_state == "critical":
-                text += "\n- Vibración"
-            col2.text(text)
-
-        elif temp_state == "critical" and corr_state == "critical" and vib_state == "critical":
-            col2.markdown("Todas las variables están en estado crítico. Acción inmediata requerida para evitar fallos graves.")
-
-
     col_espacio = st.columns(1)
- 
-    if st.button("Consultar historial de lecturas",  width="stretch"):
+    #botón para mostrar tabla de datos
+    if st.button("Consultar historial de lecturas", type="primary",  width="stretch"):
         mostrar_tabla_mysql()
         df = obtener_datos()
 
