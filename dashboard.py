@@ -373,9 +373,10 @@ def main():
                 if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
                     col2.markdown("Todos los sistemas operan dentro de los parámetros normales. No se requieren acciones adicionales.")
 
-                elif ((temp_state == "critical" and corr_state == "critical") or
-                (temp_state == "critical" and vib_state == "critical") or
-                (corr_state == "critical" and vib_state == "critical")):
+                elif ((temp_state == "critical" and corr_state == "critical" and vib_state == "normal" ) 
+          or
+          (temp_state == "critical" and vib_state == "critical" and corr_state == "normal") or
+          (corr_state == "critical" and vib_state == "critical" and temp_state == "normal")):
                     col2.markdown("Múltiples variables en estado crítico. Se recomienda una revisión  del sistema.")
 
                     text = "Variables en estado crítico:\n"
