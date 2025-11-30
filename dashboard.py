@@ -6,8 +6,10 @@ import time
 import plotly.graph_objects as go
 import base64
 from streamlit_autorefresh import st_autorefresh
+from streamlit_echarts import st_echarts
 
-st_autorefresh(interval=10 * 1000, key="data_refresh")
+
+st_autorefresh(interval=12 * 1000, key="data_refresh")
 
 def obtener_datos():
     conn = mysql.connector.connect(
@@ -28,6 +30,47 @@ def mostrar_tabla_mysql():
     df = obtener_datos()
     st.dataframe(df, use_container_width=True)
 
+def grafica_area_temperatura(df):
+    fechas = df["fecha"].dt.strftime("%H:%M:%S").tolist()
+    valores = df["temperatura"].tolist()
+
+    options = {
+        "xAxis": {"type": "category", "data": fechas},
+        "yAxis": {"type": "value"},
+        "series": [
+            {"data": valores, "type": "line", "areaStyle": {}}
+        ]
+    }
+    
+    st_echarts(options=options, height="400px")
+
+def grafica_area_corr(df):
+    fechas = df["fecha"].dt.strftime("%H:%M:%S").tolist()
+    valores = df["temperatura"].tolist()
+
+    options = {
+        "xAxis": {"type": "category", "data": fechas},
+        "yAxis": {"type": "value"},
+        "series": [
+            {"data": valores, "type": "line", "areaStyle": {}}
+        ]
+    }
+    
+    st_echarts(options=options, height="400px")
+
+def grafica_area_vib(df):
+    fechas = df["fecha"].dt.strftime("%H:%M:%S").tolist()
+    valores = df["temperatura"].tolist()
+
+    options = {
+        "xAxis": {"type": "category", "data": fechas},
+        "yAxis": {"type": "value"},
+        "series": [
+            {"data": valores, "type": "line", "areaStyle": {}}
+        ]
+    }
+    
+    st_echarts(options=options, height="400px")
 
 #Calculos de estado de cada variable
 def calc_temp_state(temperatura):
@@ -201,8 +244,11 @@ def main():
                 if left.button("Ver gráfico histórico", key="btn_temp", width="stretch"):
                     st.session_state.show_temp = not st.session_state.show_temp
                     if st.session_state.show_temp:
-                        df = df.set_index('fecha')
-                        st.line_chart(df['temperatura'])
+                        df_temp = df.copy()
+                        df_temp = df_temp.set_index('fecha')
+                        st.line_chart(df_temp['temperatura'])
+                        df_sorted = df.sort_values('fecha')
+                        grafica_area_temperatura(df_sorted)
         with col2:
             with st.container(border = True):
                 st.markdown(f"<h3 style='text-align: center;'>{titles[1]}</h3>", unsafe_allow_html=True)
@@ -267,8 +313,8 @@ def main():
             col2.markdown("Todas las variables están en estado crítico. Acción inmediata requerida para evitar fallos graves.")
 
 
-    
-
+    col_espacio = st.columns(1)
+ 
     if st.button("Consultar historial de lecturas",  width="stretch"):
         mostrar_tabla_mysql()
         df = obtener_datos()
