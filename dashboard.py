@@ -23,6 +23,12 @@ def obtener_datos():
     df['fecha'] = pd.to_datetime(df['fecha'])
     return df
 
+def mostrar_tabla_mysql():
+    st.subheader(" Datos desde MySQL")
+    df = obtener_datos()
+    st.dataframe(df, use_container_width=True)
+
+
 #Calculos de estado de cada variable
 def calc_temp_state(temperatura):
     if temperatura > 100:
@@ -137,7 +143,7 @@ def mostrar_gauge(valor, tipo, min_val=0, max_val=100):
         title={'text': title_text},
          gauge={
             'axis': {'range': [min_val, max_val]},
-            'bar': {'color': "#34B1AA"},  # Verde (tu paleta)
+            'bar': {'color': "#D6E1FF"},  
             'steps': [
                 {'range': [min_val, mid1], 'color': "#34B1AA"},  # verde
                 {'range': [mid1, mid2], 'color': "#E0B50F"},     # amarillo
@@ -174,6 +180,8 @@ def main():
         st.session_state.show_vib = False
     if "show_corr" not in st.session_state:
         st.session_state.show_corr = False
+    if "show_temp" not in st.session_state:
+        st.session_state.show_temp = False
     
     # Contenedores para las gráficas de gauge
     with st.container(border=True):
@@ -259,11 +267,14 @@ def main():
             col2.markdown("Todas las variables están en estado crítico. Acción inmediata requerida para evitar fallos graves.")
 
 
+    
+
+    if st.button("Consultar historial de lecturas",  width="stretch"):
+        mostrar_tabla_mysql()
+        df = obtener_datos()
 
 
-
-#placeholder = st.empty()
-#df = obtener_datos()
+  
     
 
 if __name__ == '__main__':
