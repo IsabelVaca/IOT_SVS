@@ -97,7 +97,7 @@ def calc_general_state(temp_state, corr_state, vib_state):
                 unsafe_allow_html=True
             )
 
-    elif temp_state == "critical" or corr_state == "critical" or vib_state == "critical":
+    elif temp_state == "critical" and corr_state == "critical" and vib_state == "critical":
         with st.container():
             with open("3.svg", "r", encoding="utf-8") as f:
                 svg_content = f.read()
@@ -157,12 +157,14 @@ def mostrar_gauge(valor, tipo, min_val=0, max_val=100):
 
 def main():
     
-
+    #encabezado y configuración de página
     st.set_page_config(layout="wide")
     img = Image.open("logo.png")
     st.image(img, width=100)
     st.title("SVS")
     st.subheader("Monitoreo de licuadora")
+
+    #obtener datos
     df = obtener_datos()
 
     #inicializar botones
@@ -173,6 +175,7 @@ def main():
     if "show_corr" not in st.session_state:
         st.session_state.show_corr = False
     
+    # Contenedores para las gráficas de gauge
     with st.container(border=True):
         col1, col2, col3 = st.columns(3)
         left, middle, right = st.columns(3)
@@ -221,17 +224,46 @@ def main():
                         df = df.set_index('fecha')
                         st.line_chart(df['corriente'])
 
+    #Calculo de estados
     temp_state = calc_temp_state(promedio_temp)
     corr_state = calc_corr_state(promedio_corr)
     vib_state = calc_vib_state(promedio_vib)
-    with st.container():
-        calc_general_state(temp_state, corr_state, vib_state)
+
+    #Mostrar estado general
+    calc_general_state(temp_state, corr_state, vib_state)
+   
+    
+
+    col1, col2, col3 = st.columns([0.5, 0.9, 2.2])
+
+
+    if col2.button("Ver detalle de diagnóstico"):
+        if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
+            col2.markdown("Todos los sistemas operan dentro de los parámetros normales. No se requieren acciones adicionales.")
+
+        elif ((temp_state == "critical" and corr_state == "critical") or
+          (temp_state == "critical" and vib_state == "critical") or
+          (corr_state == "critical" and vib_state == "critical")):
+            col2.markdown("Múltiples variables en estado crítico. Se recomienda una revisión  del sistema.")
+
+            text = "Variables en estado crítico:\n"
+            if temp_state == "critical":
+                text += "\n- Temperatura"
+            if corr_state == "critical":
+                text += "\n- Corriente"
+            if vib_state == "critical":
+                text += "\n- Vibración"
+            col2.text(text)
+
+        elif temp_state == "critical" and corr_state == "critical" and vib_state == "critical":
+            col2.markdown("Todas las variables están en estado crítico. Acción inmediata requerida para evitar fallos graves.")
 
 
 
 
-    placeholder = st.empty()
-    df = obtener_datos()
+
+#placeholder = st.empty()
+#df = obtener_datos()
     
 
 if __name__ == '__main__':
