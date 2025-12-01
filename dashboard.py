@@ -191,7 +191,7 @@ def mostrar_gauge(valor, tipo):
         min_val, max_val = 0, 5
         green_min, green_max = min_val, min_val + (max_val - min_val) * 0.5
         yellow_min, yellow_max = None, None
-        red_min = green_max
+        red_min = 3
 
     # construir grafico
     steps = []
@@ -307,7 +307,7 @@ def main():
                 st.markdown(f"<h3 style='text-align: center;'>{titles[1]}</h3>", unsafe_allow_html=True)
                 if 'vibracion' in df.columns and not df.empty:
                     promedio_vib = df['vibracion'].mean()
-                    mostrar_gauge(promedio_vib, "vibracion")
+                    mostrar_gauge(promedio_vib, "vibración")
                 else:
                     st.write("No hay datos de vibración aún.")
                 
@@ -341,13 +341,11 @@ def main():
                         st.line_chart(df['corriente'])
 
     #Calculo de estados
-    #temp_state = calc_temp_state(promedio_temp)
-    #corr_state = calc_corr_state(promedio_corr)
-    #vib_state = calc_vib_state(promedio_vib)
+    temp_state = calc_temp_state(promedio_temp)
+    corr_state = calc_corr_state(promedio_corr)
+    vib_state = calc_vib_state(promedio_vib)
 
-    temp_state = calc_temp_state(73)
-    corr_state = calc_corr_state(14)
-    vib_state = calc_vib_state(1)
+    
 
     col_left, col_right = st.columns([1.5, 1.5])
     with col_left:
