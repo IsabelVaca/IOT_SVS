@@ -115,8 +115,13 @@ def render_svg(svg_str: str, width: int = None) -> None:
     img_html += ' />'
     st.markdown(img_html, unsafe_allow_html=True)
 
+#Cálculo y renderizado del estado general
 def calc_general_state(temp_state, corr_state, vib_state):
-    if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
+    if ((temp_state == "normal" and corr_state == "normal" and vib_state == "normal") or 
+    (temp_state == "critical" and corr_state == "normal" and vib_state == "normal" ) 
+          or
+          (temp_state == "normal" and vib_state == "critical" and corr_state == "normal") or
+          (corr_state == "critical" and vib_state == "normal" and temp_state == "normal")):
         with st.container():
             with open("1.svg", "r", encoding="utf-8") as f:
                 svg_content = f.read()
@@ -357,7 +362,7 @@ def main():
                         df_temp = df_temp.set_index('fecha')
                         st.line_chart(df_temp['temperatura'])
                         df_sorted = df.sort_values('fecha')
-                        grafica_area_temperatura(df_sorted)
+                        
         with col2:
             with stylable_container(
                 key="card_vib", 
@@ -409,7 +414,6 @@ def main():
     temp_state = calc_temp_state(promedio_temp)
     corr_state = calc_corr_state(promedio_corr)
     vib_state = calc_vib_state(promedio_vib)
-
     
 
     col_left, col_right = st.columns([1.5, 1.5])
@@ -426,14 +430,17 @@ def main():
             ):
             #Mostrar estado general
             calc_general_state(temp_state, corr_state, vib_state)
-        
             colu_espacio = st.columns(1)
 
             col1, col2, col3 = st.columns([1, 0.9, 1.1])
 
 
             if col2.button("Ver detalle de diagnóstico",  type="primary"):
-                if temp_state == "normal" and corr_state == "normal" and vib_state == "normal":
+                if ((temp_state == "normal" and corr_state == "normal" and vib_state == "normal") or 
+    (temp_state == "critical" and corr_state == "normal" and vib_state == "normal" ) 
+          or
+          (temp_state == "normal" and vib_state == "critical" and corr_state == "normal") or
+          (corr_state == "critical" and vib_state == "normal" and temp_state == "normal")):
                     col2.markdown("Todos los sistemas operan dentro de los parámetros normales. No se requieren acciones adicionales.")
 
                 elif ((temp_state == "critical" and corr_state == "critical" and vib_state == "normal" ) 
