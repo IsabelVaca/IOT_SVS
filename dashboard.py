@@ -8,6 +8,9 @@ import base64
 from streamlit_autorefresh import st_autorefresh
 from streamlit_echarts import st_echarts
 from streamlit_extras.stylable_container import stylable_container
+from sklearn.linear_model import LinearRegression
+import matplotlib.pyplot as plt
+import plotly.express as px
 
 
 #auto refresh cada 12 segundos
@@ -168,7 +171,7 @@ def calc_general_state(temp_state, corr_state, vib_state):
                 unsafe_allow_html=True
             )
 
-
+#Gráficas de gauge
 def mostrar_gauge(valor, tipo):
     # Definir rangos y límites según tipo
     if tipo == 'temperatura':
@@ -190,7 +193,7 @@ def mostrar_gauge(valor, tipo):
         # valores genéricos
         min_val, max_val = 0, 5
         green_min, green_max = min_val, min_val + (max_val - min_val) * 0.5
-        yellow_min, yellow_max = None, None
+        yellow_min, yellow_max = 0, 3
         red_min = 3
 
     # construir grafico
@@ -222,6 +225,68 @@ def mostrar_gauge(valor, tipo):
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+#Predicción de fallas usando regresión lineal
+def predecir_falla(df, limite_temp, limite_vib, limite_corr):
+
+    df = df.copy()
+
+    # Convertimos fecha a número de segundos desde el inicio
+    df["t_num"] = (df["fecha"] - df["fecha"].min()).dt.total_seconds()
+
+    X = df[["t_num"]]
+
+    variables = ["temperatura", "vibracion", "corriente"]
+    limites = [limite_temp, limite_vib, limite_corr]
+    tiempos_falla = []
+
+    for var, limite in zip(variables, limites):
+
+        y = df[var]
+
+        model = LinearRegression()
+        model.fit(X, y)
+
+        m = model.coef_[0]
+        b = model.intercept_
+
+        # Solo si la tendencia es ascendente
+        if m > 0:
+            t_falla = (limite - b) / m
+            if t_falla > df["t_num"].max():
+                tiempos_falla.append(t_falla)
+
+    if len(tiempos_falla) == 0:
+        return None
+
+    t_falla_real = min(tiempos_falla)
+
+    fecha_falla = df["fecha"].min() + pd.to_timedelta(t_falla_real, unit="s")
+
+    return fecha_falla
+
+
+
+# GRAFICAR PREDICCIÓN
+def graficar_prediccion(df, fecha_falla):
+    fig, ax = plt.subplots()
+
+    ax.plot(df["fecha"], df["temperatura"], label="Temperatura")
+    ax.plot(df["fecha"], df["vibracion"], label="Vibración")
+    ax.plot(df["fecha"], df["corriente"], label="Corriente")
+
+    if fecha_falla is not None:
+        ax.axvline(fecha_falla, linestyle="--", color="red",
+                   label=f"Posible falla: {fecha_falla.date()}")
+
+    ax.set_xlabel("Tiempo")
+    ax.set_ylabel("Valores de sensores")
+    ax.set_title("Predicción de fecha de falla del dispositivo")
+    ax.legend()
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    st.pyplot(fig)
 
     
 
@@ -400,10 +465,28 @@ def main():
                 }
                  """
             ):
-            st.markdown("### Historial de lecturas")
+            st.subheader(" Predicción de Falla del Dispositivo")
+
+            df_pred = obtener_datos()
+            lim_temp = 70
+            lim_vib = 9.0
+            lim_corr = 15
+            fecha_falla = predecir_falla(df_pred,
+                                        lim_temp,
+                                        lim_vib,
+                                        lim_corr)
+
+            if fecha_falla is not None:
+                st.error(f"Posible falla estimada alrededor de: **{fecha_falla}**")
+            else:
+                st.success("El sistema no muestra tendencia de falla en el corto plazo.")
             
+            graficar_prediccion(df_pred, fecha_falla)
+
+            col_espacio1 = st.columns(1, )
+                    
     
-    col_espacio = st.columns(1)
+    col_espacio2 = st.columns(1)
     #botón para mostrar tabla de datos
     if st.button("Consultar historial de lecturas", type="primary",  width="stretch"):
         mostrar_tabla_mysql()
